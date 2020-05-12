@@ -8,11 +8,16 @@ H_2 = \bigg\lfloor \frac{H_1+2p-d(K-1)-1}{s} +1 \bigg\rfloor\\
 W_2 = \bigg\lfloor \frac{W_2+2p-d(K-1)-1}{s}+1\bigg\rfloor \\
 $$
 
+$$
+\text{bias shape is } (N,c_2,H_2,W_2)  \text{ but only has } (c_2 \times H_2 \times W_2) \text{ parameters } , \text{ identical on batch_dimension}
+$$
+
+
+
 - N = batch size  (GPU parallel computation)
 - C = channels / num of filters / RGB(3)
 - H = height (row indexs)
 - W = width (column indexs) 
-
 - p = padding = 0  
 - d = dilation  = 1
 - s = stride = 1
