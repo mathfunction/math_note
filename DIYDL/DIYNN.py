@@ -110,7 +110,7 @@ class Siren(nn.Module):
 	2020/07/19:
 	- https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf
 ---------------------------------------------------------------------------"""
-class SkipGram(nn.Module):   #  center = (B) neighbors = (B) negs = (B,neg_size) 
+class SkipGram(nn.Module):   #  input :  center = (B) neighbors = (B) negs = (B,neg_size) , output: loss
 	def __init__(self,dimV=20000,dimE=300):
 		super(SkipGram,self).__init__()
 		self.embedI = nn.Embedding(dimV,dimE)
@@ -122,16 +122,16 @@ class SkipGram(nn.Module):   #  center = (B) neighbors = (B) negs = (B,neg_size)
 		self.log_sigmoid = nn.LogSigmoid()
 	
 	def forward(self,center,nbrs,negs): 	 
-		v =  self.embedI(center) 			 # (B) -----> (B,dimE)
-		u = self.embedO(nbrs) 				 # (B) -----> (B,dimE)
-		uv = torch.sum(u*v,dim=1).squeeze()  # (B,dimE) -----> (B,1) -----> (B)
-		u_neg = self.embedO(negs) 			 # (B,neg_size) -----> (B,neg_size,dimE)
-		u_negv = torch.bmm(u_neg,v.unsqueeze(2)).squeeze(2) # (B,neg_size,dimE) x (B,dimE,1) = (B,neg_size,1) ---> (B,neg_size)
+		v =  self.embedI(center) 			 							  # (B) -----> (B,dimE)
+		u = self.embedO(nbrs) 				 							  # (B) -----> (B,dimE)
+		uv = torch.sum(u*v,dim=1).squeeze()  							  # (B,dimE) -----> (B,1) -----> (B)
+		u_neg = self.embedO(negs) 			 							  # (B,neg_size) -----> (B,neg_size,dimE)
+		u_negv = torch.bmm(u_neg,v.unsqueeze(2)).squeeze(2) 			  # (B,neg_size,dimE) x (B,dimE,1) = (B,neg_size,1) ---> (B,neg_size)
 		positives = self.log_sigmoid(uv)
 		negatives = self.log_sigmoid(-torch.sum(u_negv, dim=1)).squeeze() # (B,neg_size) -----> (B,1) -----> (B)
 		loss = -(positives + negatives)
 		return loss.mean() # batch mean
-
+#-----------------------------------------------------------------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
