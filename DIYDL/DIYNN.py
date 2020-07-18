@@ -135,45 +135,45 @@ class SkipGram(nn.Module):   #  input :  center = (B) neighbors = (B) negs = (B,
 """-------------------------------------------------------------------------------------
 	2020/07/19  YOLOv3  - DarkNet53
 ----------------------------------------------------------------------------------------"""
-def DarkNet_Conv2d(num_in,num_out,kernel_size,padding,stride):
+def YOLOv3_Conv2d(num_in,num_out,kernel_size,padding,stride):
 	return nn.Sequential(
 		nn.Conv2d(num_in,num_out,kernel_size=kernel_size,stride=stride,padding=padding,bias=False),
 		nn.BatchNorm2d(num_out),
 		nn.LeakyReLU()
 	)
 
-class DarkNet_Residual(nn.Module):   # input : (B,C,N,N) ----> (B,C,N,N)
+class YOLOv3_Residual(nn.Module):   # input : (B,C,N,N) ----> (B,C,N,N)
 	def __init__(self,num_in):
-		super(DarkNet_Residual,self).__init__()
-		self.conv1 = DarkNet_Conv2d(num_in,num_in//2, kernel_size=1, padding=0,stride=1) # floor[(N-k+2p)/s]+1 = N 
-		self.conv2 = DarkNet_Conv2d(num_in//2,num_in, kernel_size=3, padding=1,stride=1) # floor[(N-k+2p)/s]+1 = N  
+		super(YOLOv3_Residual,self).__init__()
+		self.conv1 = YOLOv3_Conv2d(num_in,num_in//2, kernel_size=1, padding=0,stride=1) # floor[(N-k+2p)/s]+1 = N 
+		self.conv2 = YOLOv3_Conv2d(num_in//2,num_in, kernel_size=3, padding=1,stride=1) # floor[(N-k+2p)/s]+1 = N  
 	def forward(self,x):
 		out = self.conv1(x)
 		out = self.conv2(out)
 		out += x
 		return out
 
-def DarkNet_ResBlocks(num_in,num_blocks):
+def YOLOv3_ResBlocks(num_in,num_blocks):
 	layers = []
 	for i in range(0,num_blocks):
-		layers.append(DarkNet_Residual(num_in))
+		layers.append(YOLOv3_Residual(num_in))
 	return nn.Sequential(*layers)
 
 
-class DarkNet53(nn.Module):   # 6 (conv2d) + [1+2+8+8+4]x2 (res) = 52 convs 
+class DarkNet53(nn.Module):   # 6 (conv2d) + [1+2+8+8+4]x2 (res) = 52 convs ,  N ---> { b3:N/8 , b4:N/16 , b5:N/32 }
 	def __init__(self):     
 		super(DarkNet53,self).__init__()
-		self.conv1 = DarkNet_Conv2d(3,32,kernel_size=3, padding=1,stride=1) 	# floor[(N-k+2p)/s]+1 = N = 256
-		self.conv2 = DarkNet_Conv2d(32,64,kernel_size=3, padding=1,stride=2)   # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 128
-		self.res1 = DarkNet_ResBlocks(64,1)
-		self.conv3 = DarkNet_Conv2d(64,128,kernel_size=3,padding=1,stride=2)   # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 64
-		self.res2 = DarkNet_ResBlocks(128,2)
-		self.conv4 = DarkNet_Conv2d(128,256,kernel_size=3,padding=1,stride=2)  # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 32
-		self.res3 = DarkNet_ResBlocks(256,8)   # b3 = 32 x 32 x 256 
-		self.conv5 = DarkNet_Conv2d(256,512,kernel_size=3,padding=1,stride=2)  # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 16
-		self.res4 = DarkNet_ResBlocks(512,8)   # b4 = 16 x 16 x 512 
-		self.conv6 = DarkNet_Conv2d(512,1024,kernel_size=3,padding=1,stride=2) # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 8
-		self.res5 = DarkNet_ResBlocks(1024,4)  # b5 = 8 x 8 x 1024 
+		self.conv1 = YOLOv3_Conv2d(3,32,kernel_size=3, padding=1,stride=1) 	# floor[(N-k+2p)/s]+1 = N = 256
+		self.conv2 = YOLOv3_Conv2d(32,64,kernel_size=3, padding=1,stride=2)   # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 128
+		self.res1 = YOLOv3_ResBlocks(64,1)
+		self.conv3 = YOLOv3_Conv2d(64,128,kernel_size=3,padding=1,stride=2)   # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 64
+		self.res2 = YOLOv3_ResBlocks(128,2)
+		self.conv4 = YOLOv3_Conv2d(128,256,kernel_size=3,padding=1,stride=2)  # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 32
+		self.res3 = YOLOv3_ResBlocks(256,8)   # b3 = 32 x 32 x 256 
+		self.conv5 = YOLOv3_Conv2d(256,512,kernel_size=3,padding=1,stride=2)  # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 16
+		self.res4 = YOLOv3_ResBlocks(512,8)   # b4 = 16 x 16 x 512 
+		self.conv6 = YOLOv3_Conv2d(512,1024,kernel_size=3,padding=1,stride=2) # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 8
+		self.res5 = YOLOv3_ResBlocks(1024,4)  # b5 = 8 x 8 x 1024 
 
 	def forward(self,x):
 		z = self.conv1(x)
@@ -189,9 +189,86 @@ class DarkNet53(nn.Module):   # 6 (conv2d) + [1+2+8+8+4]x2 (res) = 52 convs
 		z = self.conv6(b4)
 		b5 = self.res5(z)
 		return b3,b4,b5  # output has 3 tensors , to connect FPN  
+
+
+
+class YOLOv3_ConvBlock5L(nn.Module):
+	def __init__(self,num_in,num_out):
+		super(YOLOv3_ConvBlock5L,self).__init__()
+		self.conv1 = YOLOv3_Conv2d(num_in,num_out,kernel_size=1,padding=0,stride=1)
+		self.conv2 = YOLOv3_Conv2d(num_out,2*num_out,kernel_size=3,padding=1,stride=1)
+		self.conv3 = YOLOv3_Conv2d(2*num_out,num_out,kernel_size=1,padding=0,stride=1)
+		self.conv4 = YOLOv3_Conv2d(num_out,2*num_out,kernel_size=3,padding=1,stride=1)
+		self.conv5 = YOLOv3_Conv2d(2*num_out,num_out,kernel_size=1,padding=0,stride=1)
+
+	def forward(self,b):
+		z = self.conv1(b)
+		z = self.conv2(z)
+		z = self.conv3(z)
+		z = self.conv4(z)
+		y = self.conv5(z)
+		return y
+
+
+
+class FeaturePyramidNetwork(nn.Module):
+	def __init__(self,num_out):
+		super(FeaturePyramidNetwork,self).__init__()
+		
+		# after-concat conv-layers 
+		self.conv_block5L_b3 = YOLOv3_ConvBlock5L(384,128) 
+		self.conv_block5L_b4 = YOLOv3_ConvBlock5L(768,256)
+		self.conv_block5L_b5 = YOLOv3_ConvBlock5L(1024,512)
+
+		# branch1 : before yolo conv-layers
+		self.conv_before_yolo_b3_k3 = YOLOv3_Conv2d(128,256,kernel_size=3,padding=1,stride=1)
+		self.conv_before_yolo_b3_k1 = nn.Conv2d(256,num_out,kernel_size=1,padding=0,stride=1)
+		
+		self.conv_before_yolo_b4_k3 = YOLOv3_Conv2d(256,512,kernel_size=3,padding=1,stride=1)
+		self.conv_before_yolo_b4_k1 = nn.Conv2d(512,num_out,kernel_size=1,padding=0,stride=1)
+		
+		self.conv_before_yolo_b5_k3 = YOLOv3_Conv2d(512,1024,kernel_size=3,padding=1,stride=1)
+		self.conv_before_yolo_b5_k1 = nn.Conv2d(1024,num_out,kernel_size=1,padding=0,stride=1)
+
+		
+		# branch2 : before upsampling conv-layers
+		self.conv_before_up_b4 = YOLOv3_Conv2d(256,128,kernel_size=1,padding=0,stride=1)
+		self.conv_before_up_b5 = YOLOv3_Conv2d(512,256,kernel_size=1,padding=0,stride=1)
+
+	# b3 , b4 , b5  is from Darknet BackBone !!
+	def forward(self,b3,b4,b5):
+												# Assume N = 256 , H x W x C   note: pytorch is NCHW tensor 
+		z = self.conv_block5L_b5(b5)			# 8 x 8 x 1024 ---> 8 x 8 x 512 
+		# branch1 : detection
+		o1 = self.conv_before_yolo_b5_k3(z)		# 8 x 8 x 512 --->  8 x 8 x 1024
+		o1 = self.conv_before_yolo_b5_k1(o1)	# 8 x 8 x 1024 ---> 8 x 8 x Infos
+		# branch2 : bottom_up
+		z = self.conv_before_up_b5(z)			# 8 x 8 x 512 ----> 8 x 8 x 256 
+		z = nn.Upsample(scale_factor=2)(z)# 16 x 16 x 256 
+		z = torch.cat((z,b4),dim=1)				# 16 x 16 x (256+512) ---> 16 x 16 x 768 
+		
+		# branch1 : detection 
+		z = self.conv_block5L_b4(z)				# 16 x 16 x 768 ----> 16 x 16 x 256  
+		o2 = self.conv_before_yolo_b4_k3(z) 	# 16 x 16 x 256 ----> 16 x 16 x 512 
+		o2 = self.conv_before_yolo_b4_k1(o2)	# 16 x 16 x 512 ----> 16 x 16 x Infos 
+		# branch2 : bottom_up
+		z = self.conv_before_up_b4(z)           # 16 x 16 x 256 ----> 16 x 16 x 128
+		z = nn.Upsample(scale_factor=2)(z)      # 16 x 16 x 128 ----> 32 x 32 x 128
+		z = torch.cat((z,b3),dim=1)				# 32 x 32 x (128+256) ----> 32 x 32 x 384
+		
+		# branch1 :detection 
+		z = self.conv_block5L_b3(z)             # 32 x 32 x 384 ----> 32 x 32 x 128
+		o3 = self.conv_before_yolo_b3_k3(z)     # 32 x 32 x 128 ----> 32 x 32 x 256
+		o3 = self.conv_before_yolo_b3_k1(o3)    # 32 x 32 x 256 ----> 32 x 32 x Infos
+
+		return o1,o2,o3
+
+
+"""------------------------------------------------------------------------------------------------------------------------------
 	
 
 
+----------------------------------------------------------------------------------------------------------------------------"""
 
 
 
@@ -204,11 +281,11 @@ class DarkNet53(nn.Module):   # 6 (conv2d) + [1+2+8+8+4]x2 (res) = 52 convs
 
 if __name__ == '__main__':
 	
-
+	#===============================================================
 	x = torch.ones(1,512,300)
 	MHSA = MultiHeadSelfAttention(h=4,n=512,d=300,k=128,o=3)
 	print(MHSA(x).shape)
-
+	#=========================================================
 
 	x = torch.ones(100,2)
 	siren = Siren()
@@ -222,8 +299,10 @@ if __name__ == '__main__':
 	print(skipgram(center,nbrs,negs))
 
 	darknet = DarkNet53()
+	fpn = FeaturePyramidNetwork(32)
 	x = torch.zeros(1,3,256,256)
 	b3 , b4 , b5 = darknet(x)
-	print(b3.shape)
-	print(b4.shape)
-	print(b5.shape)
+	o1 , o2 , o3 = fpn(b3,b4,b5)
+	print(o1.shape)
+	print(o2.shape)
+	print(o3.shape)
