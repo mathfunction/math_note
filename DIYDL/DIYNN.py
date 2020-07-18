@@ -67,6 +67,29 @@ class MultiHeadSelfAttention(nn.Module):  # (B,n,d) ------> (B,n,hd) ----->(B,n,
 		return output 
 
 
+
+class LinformerBlock(nn.Module):
+	def __init__(self,h,n,d,k,f=4): # f = forward expansion
+		super(LinformerBlock, self).__init__()
+		self.attention = MultiHeadSelfAttention(h,n,d,k,d) # o = d
+		self.norm1 = nn.LayerNorm(d) # normalize the last dim !!
+		self.norm2 = nn.LayerNorm(d)
+		self.feed_forward = nn.Sequential(
+			nn.Linear(d,f*d),
+			nn.ReLU(),
+			nn.Linear(f*d,d)
+		)
+		self.dropout = nn.Dropout(p=0.1)
+
+	def forward(self,I):
+		x1 = self.dropout(self.norm1(self.attention(I)+I)) # (B,n,d)
+		x2 = self.feed_forward(x1)
+		x3 = self.dropout(self.norm2(x2+x1))
+		return x3
+
+
+
+
 """------------------------------------------------------------------------------------
 	2020/07/19
 	- Implicit Neural Representations with Periodic Activation Functions
@@ -278,13 +301,12 @@ class FeaturePyramidNetwork(nn.Module):
 
 
 
-
 if __name__ == '__main__':
 	
 	#===============================================================
 	x = torch.ones(1,512,300)
-	MHSA = MultiHeadSelfAttention(h=4,n=512,d=300,k=128,o=3)
-	print(MHSA(x).shape)
+	linModel = LinformerBlock(h=4,n=512,d=300,k=128,f=2)
+	print(linModel(x).shape)
 	#=========================================================
 
 	x = torch.ones(100,2)
