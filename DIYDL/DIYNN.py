@@ -131,7 +131,75 @@ class SkipGram(nn.Module):   #  input :  center = (B) neighbors = (B) negs = (B,
 		negatives = self.log_sigmoid(-torch.sum(u_negv, dim=1)).squeeze() # (B,neg_size) -----> (B,1) -----> (B)
 		loss = -(positives + negatives)
 		return loss.mean() # batch mean
-#-----------------------------------------------------------------------------------------------------------------------------------------
+
+"""-------------------------------------------------------------------------------------
+	2020/07/19  YOLOv3  - DarkNet53
+----------------------------------------------------------------------------------------"""
+def DarkNet_Conv2d(num_in,num_out,kernel_size,padding,stride):
+	return nn.Sequential(
+		nn.Conv2d(num_in,num_out,kernel_size=kernel_size,stride=stride,padding=padding,bias=False),
+		nn.BatchNorm2d(num_out),
+		nn.LeakyReLU()
+	)
+
+class DarkNet_Residual(nn.Module):   # input : (B,C,N,N) ----> (B,C,N,N)
+	def __init__(self,num_in):
+		super(DarkNet_Residual,self).__init__()
+		self.conv1 = DarkNet_Conv2d(num_in,num_in//2, kernel_size=1, padding=0,stride=1) # floor[(N-k+2p)/s]+1 = N 
+		self.conv2 = DarkNet_Conv2d(num_in//2,num_in, kernel_size=3, padding=1,stride=1) # floor[(N-k+2p)/s]+1 = N  
+	def forward(self,x):
+		out = self.conv1(x)
+		out = self.conv2(out)
+		out += x
+		return out
+
+def DarkNet_ResBlocks(num_in,num_blocks):
+	layers = []
+	for i in range(0,num_blocks):
+		layers.append(DarkNet_Residual(num_in))
+	return nn.Sequential(*layers)
+
+
+class DarkNet53(nn.Module):   # 6 (conv2d) + [1+2+8+8+4]x2 (res) = 52 convs 
+	def __init__(self):     
+		super(DarkNet53,self).__init__()
+		self.conv1 = DarkNet_Conv2d(3,32,kernel_size=3, padding=1,stride=1) 	# floor[(N-k+2p)/s]+1 = N = 256
+		self.conv2 = DarkNet_Conv2d(32,64,kernel_size=3, padding=1,stride=2)   # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 128
+		self.res1 = DarkNet_ResBlocks(64,1)
+		self.conv3 = DarkNet_Conv2d(64,128,kernel_size=3,padding=1,stride=2)   # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 64
+		self.res2 = DarkNet_ResBlocks(128,2)
+		self.conv4 = DarkNet_Conv2d(128,256,kernel_size=3,padding=1,stride=2)  # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 32
+		self.res3 = DarkNet_ResBlocks(256,8)   # b3 = 32 x 32 x 256 
+		self.conv5 = DarkNet_Conv2d(256,512,kernel_size=3,padding=1,stride=2)  # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 16
+		self.res4 = DarkNet_ResBlocks(512,8)   # b4 = 16 x 16 x 512 
+		self.conv6 = DarkNet_Conv2d(512,1024,kernel_size=3,padding=1,stride=2) # floor[(N-k+2p)/s]+1 = floor[(N-1)/2]+1 = 8
+		self.res5 = DarkNet_ResBlocks(1024,4)  # b5 = 8 x 8 x 1024 
+
+	def forward(self,x):
+		z = self.conv1(x)
+		z = self.conv2(z)
+		z = self.res1(z)
+		z = self.conv3(z)
+		z = self.res2(z)
+		z = self.conv4(z)
+		#-------------------------------------#
+		b3 = self.res3(z)
+		z = self.conv5(b3)
+		b4 = self.res4(z)
+		z = self.conv6(b4)
+		b5 = self.res5(z)
+		return b3,b4,b5  # output has 3 tensors , to connect FPN  
+	
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
@@ -153,5 +221,9 @@ if __name__ == '__main__':
 	skipgram = SkipGram()
 	print(skipgram(center,nbrs,negs))
 
-
-
+	darknet = DarkNet53()
+	x = torch.zeros(1,3,256,256)
+	b3 , b4 , b5 = darknet(x)
+	print(b3.shape)
+	print(b4.shape)
+	print(b5.shape)
