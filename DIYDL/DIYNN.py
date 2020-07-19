@@ -68,7 +68,7 @@ class MultiHeadSelfAttention(nn.Module):  # (B,n,d) ------> (B,n,hd) ----->(B,n,
 
 
 
-class LinformerBlock(nn.Module):
+class LinformerBlock(nn.Module):  
 	def __init__(self,h,n,d,k,f=4): # f = forward expansion
 		super(LinformerBlock, self).__init__()
 		self.attention = MultiHeadSelfAttention(h,n,d,k,d) # o = d
@@ -288,12 +288,34 @@ class FeaturePyramidNetwork(nn.Module):
 
 
 """------------------------------------------------------------------------------------------------------------------------------
-	
-
-
+	Abstract ResBlocks :
+		Naive 
+			(Fn ... o F4 o F3 o F2 o F1)(x)  = Naive({ F1 , ... Fn })
+			
+		Resblock (dim preseving)
+			(I+Fn) o ... o (I+F2) o (I+F1)(x)  = Res({ F1 , ... , Fn }) 
+		
+			
 ----------------------------------------------------------------------------------------------------------------------------"""
 
-
+class AbstractResBlocks(nn.Module):
+	def __init__(
+			self,layerList=[nn.Linear(10,10),nn.Linear(10,10)],_boolAlpha=False
+		):
+		super(AbstractResBlocks,self).__init__() 
+		self.layers = nn.ModuleList(layerList)
+		self._boolAlpha = _boolAlpha
+		if _boolAlpha == True:	
+			L = len(layerList)
+			self.alphas = torch.sigmoid(nn.Parameter(torch.randn(L)))
+		
+	def forward(self,x):
+		for i in range(len(self.layers)):
+			if self._boolAlpha == True:
+				x += self.alphas[i]*self.layers[i](x)
+			else:
+				x += self.layers[i](x)
+		return x 
 
 
 
@@ -328,3 +350,22 @@ if __name__ == '__main__':
 	print(o1.shape)
 	print(o2.shape)
 	print(o3.shape)
+ 	#=============================================================================
+	# shard parameters example !!
+	x = torch.ones(5,10)
+	s1 = SirenActivation(10,10)  # [-1,1]
+	s2 = SirenActivation(10,10)  # [-1,1]
+	s3 = SirenActivation(10,10)  # [-1,1]
+	resblocks = AbstractResBlocks(
+		layerList=[s1,s2,s2,s1]
+	)
+	
+	print(resblocks(x).shape)
+	"""
+	s1.W = nn.Parameter(torch.zeros(10,10))
+	s2.W = nn.Parameter(torch.ones(10,10))
+	for i in range(len(resblocks.layers)):
+		print(resblocks.layers[i].W)
+	"""
+
+
