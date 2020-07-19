@@ -96,38 +96,47 @@ class LinformerBlock(nn.Module):
 		https://vsitzmann.github.io/siren/
 	
 ----------------------------------------------------------------------------------------"""
-class SirenActivation(nn.Module):  # D^n ---> D^m , D = [-1,1]
-	def __init__(self,dimI,dimO,w0=1.,c=6.):
-		super(SirenActivation,self).__init__()
+class SineActivation(nn.Module):  # D^n ---> D^m , D = [-1,1]
+	def __init__(self,dimI,dimO,w0=1.,c=6.,act=None):
+		super(SineActivation,self).__init__()
 		W = torch.zeros(dimO,dimI)
 		b = torch.zeros(dimO)
 		# ----------- 初始化 -------------
 		std = 1.0/math.sqrt(dimI)
 		w_std = math.sqrt(c)*std/w0
+
 		W.uniform_(-w_std, w_std)
 		b.uniform_(-std, std)
 		#------------------------------------
 		self.w0 = w0
 		self.W = nn.Parameter(W)
 		self.b = nn.Parameter(b)
-        
+		if act == None:
+			self.act = torch.sin
+		else:
+			self.act = act
+	
 	def forward(self, x):  # (B,dimI) -----> (B,dimO)
-		x =  F.linear(x,self.W, self.b)
-		x = torch.sin(self.w0*x)
-		return x
+		out =  F.linear(x,self.W, self.b)
+		out =  self.act(self.w0*out)
+		return out
 
 class Siren(nn.Module):
-	def __init__(self,dims=[2,256,256,256,256,256,3],ws=[30.,1.,1.,1.,1.,1.]):
+	def __init__(self,dims=[2,256,256,256,256,256,3],ws=[30.,1.,1.,1.,1.,1.],final_activation=nn.Sigmoid()):
 		super(Siren,self).__init__()
 		self.nlayers = len(dims)-1
-		self.acts = nn.ModuleList()
-		for i in range(self.nlayers):
-			self.acts.append(SirenActivation(dimI=dims[i],dimO=dims[i+1],w0=ws[i]))
-
+		acts = []
+		self.final_act = final_activation
+		for i in range(self.nlayers-1):
+			acts.append(SineActivation(dimI=dims[i],dimO=dims[i+1],w0=ws[i]))
+		#----------------------------------------------------------------------------------------------
+		# 最後一層不是用 Sine !!
+		acts.append(SineActivation(dimI=dims[-2],dimO=dims[-1],w0=ws[-1],act=final_activation))
+		#---------------------------------------------------------------------------------------------
+		self.acts = nn.Sequential(*acts)
 	def forward(self,x):
-		for i in range(self.nlayers):
-			x = self.acts[i](x)
-		return x
+		out = self.acts(x)
+		return out
 
 """------------------------------------------------------------------------
 	2020/07/19:
@@ -300,7 +309,7 @@ class FeaturePyramidNetwork(nn.Module):
 
 class AbstractResBlocks(nn.Module):
 	def __init__(
-			self,layerList=[nn.Linear(10,10),nn.Linear(10,10)],_boolAlpha=False
+			self,layerList=[nn.Linear(10,10),nn.Linear(10,10)],_boolAlpha=True
 		):
 		super(AbstractResBlocks,self).__init__() 
 		self.layers = nn.ModuleList(layerList)
@@ -353,9 +362,9 @@ if __name__ == '__main__':
  	#=============================================================================
 	# shard parameters example !!
 	x = torch.ones(5,10)
-	s1 = SirenActivation(10,10)  # [-1,1]
-	s2 = SirenActivation(10,10)  # [-1,1]
-	s3 = SirenActivation(10,10)  # [-1,1]
+	s1 = SineActivation(10,10)  # [-1,1]
+	s2 = SineActivation(10,10)  # [-1,1]
+	s3 = SineActivation(10,10)  # [-1,1]
 	resblocks = AbstractResBlocks(
 		layerList=[s1,s2,s2,s1]
 	)
