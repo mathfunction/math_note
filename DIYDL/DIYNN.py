@@ -309,26 +309,27 @@ class FeaturePyramidNetwork(nn.Module):
 
 class AbstractResBlocks(nn.Module):
 	def __init__(
-			self,layerList=[nn.Linear(10,10),nn.Linear(10,10)],_boolAlpha=True
+			self,layerList=[nn.Linear(10,10),nn.Linear(10,10)]
 		):
 		super(AbstractResBlocks,self).__init__() 
-		self.layers = nn.ModuleList(layerList)
-		self._boolAlpha = _boolAlpha
-		if _boolAlpha == True:	
-			L = len(layerList)
-			self.alphas = torch.sigmoid(nn.Parameter(torch.randn(L)))
+		self.layers = layerList
 		
 	def forward(self,x):
 		for i in range(len(self.layers)):
-			if self._boolAlpha == True:
-				x += self.alphas[i]*self.layers[i](x)
-			else:
-				x += self.layers[i](x)
+			x = x + self.layers[i](x)  
 		return x 
 
 
+class LinearInterval(nn.Module):
+	def __init__(self,Domain=[-1,1],Codomain=[0,1]):
+		super(LinearInterval,self).__init__() 
+		self.Domain = Domain
+		self.Codomain = Codomain		
+		self.scaledRatio = (Codomain[1]-Codomain[0]) /(Domain[1] - Domain[0])
 
-
+	def forward(self,x):
+		x = self.Codomain[0] + (x-self.Domain[0]) * self.scaledRatio
+		return x 
 
 
 
