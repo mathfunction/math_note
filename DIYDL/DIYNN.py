@@ -90,6 +90,37 @@ class LinformerBlock(nn.Module):
 
 
 
+
+# (B,n)  ---> embedding (B,n,d) ---> linBlocks (B,n,d) ---> poolLayer (B,n,3) ----> act  
+class LinformerNER(nn.Module):
+	def __init__(self,
+			dimV=10000,  	# 離散種類個數
+			dimH=300,    	# 維度
+			dimO=3,       # 輸出維度
+			dimMaxL=512, 	# 句子長度 
+			dimK=100,	    # 低維空間  
+			numBlocks=12,   # LinBlocks 深度
+			numHeads=4,     # 種類
+			act=nn.Softmax(dim=-1)
+		):
+		super(LinformerNER, self).__init__()
+		
+		layers = []
+		for i in range(numBlocks):
+			layers.append(LinformerBlock(h=numHeads,n=dimMaxL,d=dimH,k=100))
+		self.embedLayer = torch.nn.Embedding(num_embeddings=dimV, embedding_dim=dimH)
+		self.linBlocks = nn.Sequential(*layers)
+		self.poolLayer = torch.nn.AvgPool1d(kernel_size=dimH//dimO)
+		self.final_act = act
+	def forward(self,x):
+		x = self.embedLayer(x)
+		x = self.linBlocks(x)
+		x = self.poolLayer(x)
+		x = self.final_act(x)
+		return x
+
+
+
 """------------------------------------------------------------------------------------
 	2020/07/19
 	- Implicit Neural Representations with Periodic Activation Functions
