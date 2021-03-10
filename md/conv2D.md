@@ -40,7 +40,17 @@ $$
 
 finally :
 $$
-Y(N,C_2,H_2,W_2) \\=\bigwedge_{c_2\in C_2}\bigwedge_{i_2\in H_2} \bigwedge_{j_2 \in W_2} \bigg[\sum_{c_1\in C_1}\sum_{k\in [0,K-1]} \sum_{k\in [0,K-1]} \omega(c_2,c_1,i_2+k,j_2+k)\cdot X(N,c_1,i_2+k,j_2+k) \bigg] 
+Y(N,C_2,H_2,W_2) \\=\bigwedge_{c_2\in C_2}\bigwedge_{i_2\in H_2} \bigwedge_{j_2 \in W_2} \bigg[\sum_{c_1\in C_1}\sum_{k\in [0,K-1]} \sum_{k\in [0,K-1]} \omega(c_2,c_1,i_2+k,j_2+k)\cdot X(N,c_1,i_2+k,j_2+k) \bigg]
 $$
 
+```python
+def einsum(str,A,B):
+    pass
+
+def conv2D(W,X):
+    pass
+    
+    
+    
+```
 
